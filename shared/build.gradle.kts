@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.compose.compose
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -54,6 +55,14 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation("io.insert-koin:koin-core:3.5.6")
+
+
+            implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha08")
+
+
+            implementation("io.insert-koin:koin-compose:1.1.5")
+            implementation(compose.material)
+            implementation(compose.materialIconsExtended)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
