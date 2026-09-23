@@ -62,4 +62,12 @@ class CitasViewModel(
             _uiState.value = CitasUiState.Success(listaFiltrada)
         }
     }
+    // RN-02: Validar si el paciente llegó al límite de 3 citas
+    fun alcanzoLimiteCitas(estado: CitasUiState): Boolean {
+        return if (estado is CitasUiState.Success) {
+            estado.citas.size >= 3
+        } else {
+            false
+        }
+    }
 }
