@@ -20,18 +20,52 @@ object CitasSimuladas {
 
     val citas = listOf(
         Cita(
-            1,
-            "Medicina General",
-            "Dr. Iván Rojas",
-            "Ñaña",
-            "2026-09-18",
-            "09:00",
-            EstadoCita.Programada(true)
+            especialidad = "Medicina General",
+            medico = "Dr. Iván Rojas",
+            fecha = "2026-09-18",
+            hora = "09:00",
+            sede = "Ñaña",
+            modalidad = "Presencial"
         ),
-        Cita(2, "Odontología", "Dra. Rosa Flores", "Chosica", "2026-09-21", "16:30", EstadoCita.Programada(false)),
-        Cita(3, "Nutrición", "Lic. Ana Bermúdez", "Santa Anita", "2026-09-25", "11:15", EstadoCita.Programada(true)),
-        Cita(4, "Pediatría", "Dra. Carla Núñez", "Chaclacayo", "2026-08-30", "08:45", EstadoCita.Atendida("Control en tres meses")),
-        Cita(5, "Psicología", "Ps. Luis Tapia", "Ñaña", "2026-09-02", "15:00", EstadoCita.Atendida("Continuar sesiones quincenales")),
-        Cita(6, "Medicina General", "Dr. Iván Rojas", "Chosica", "2026-09-05", "10:30", EstadoCita.Cancelada("Viaje del paciente", true))
+        Cita(
+            especialidad = "Odontología",
+            medico = "Dra. Rosa Flores",
+            fecha = "2026-09-21",
+            hora = "16:30",
+            sede = "Chosica",
+            modalidad = "Teleconsulta"
+        ),
+        Cita(
+            especialidad = "Nutrición",
+            medico = "Lic. Ana Bermúdez",
+            fecha = "2026-09-25",
+            hora = "11:15",
+            sede = "Santa Anita",
+            modalidad = "Presencial"
+        ),
+        Cita(
+            especialidad = "Pediatría",
+            medico = "Dra. Carla Núñez",
+            fecha = "2026-08-30",
+            hora = "08:45",
+            sede = "Chaclacayo",
+            modalidad = "Teleconsulta"
+        ),
+        Cita(
+            especialidad = "Psicología",
+            medico = "Ps. Luis Tapia",
+            fecha = "2026-09-02",
+            hora = "15:00",
+            sede = "Ñaña",
+            modalidad = "Presencial"
+        ),
+        Cita(
+            especialidad = "Medicina General",
+            medico = "Dr. Iván Rojas",
+            fecha = "2026-09-05",
+            hora = "10:30",
+            sede = "Chosica",
+            modalidad = "Teleconsulta"
+        )
     )
 }

@@ -12,6 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.andinasalud.domain.model.Cita
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.VideoCall
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 @Composable
 fun CitasScreen(viewModel: CitasViewModel) {
     // Elevación de estado (State Hoisting) exigida en el examen
@@ -60,6 +66,24 @@ fun CitaItem(cita: Cita) {
             Text(text = "Dr/Dra: ${cita.medico}", style = MaterialTheme.typography.bodyMedium)
             Text(text = "${cita.fecha} - ${cita.hora}", style = MaterialTheme.typography.bodySmall)
             Text(text = "Sede: ${cita.sede}", style = MaterialTheme.typography.bodySmall)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // SC-C: Fila con ícono dinámico según la modalidad
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (cita.modalidad == "Teleconsulta") Icons.Default.VideoCall else Icons.Default.LocationOn,
+                    contentDescription = "Icono Modalidad",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = cita.modalidad,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
