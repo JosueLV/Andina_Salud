@@ -14,18 +14,30 @@ import pe.edu.upeu.andinasalud.domain.model.Cita
 
 @Composable
 fun CitasScreen(viewModel: CitasViewModel) {
-    // Elevación de estado (State Hoisting) exigida en el examen
     val uiState by viewModel.uiState.collectAsState()
+
+    // SC-B: Calculamos si se alcanzó el límite de 3 citas
+    val cantidadCitas = if (uiState is CitasUiState.Success) {
+        (uiState as CitasUiState.Success).citas.size
+    } else 0
+    val limiteAlcanzado = cantidadCitas >= 3
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Manejo de los 4 estados obligatorios del RF-08
+        // SC-B: Botón de Solicitar Cita que se desactiva si hay 3 o más
+        Button(
+            onClick = { /* Navegar a pantalla de nueva solicitud */ },
+            enabled = !limiteAlcanzado,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        ) {
+            Text(if (limiteAlcanzado) "Límite de citas alcanzado (Máx 3)" else "Solicitar nueva cita")
+        }
+
         when (val state = uiState) {
             is CitasUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator() // Muestra la carga de los 800ms
+                    CircularProgressIndicator()
                 }
             }
             is CitasUiState.Error -> {
@@ -39,7 +51,6 @@ fun CitasScreen(viewModel: CitasViewModel) {
                 }
             }
             is CitasUiState.Success -> {
-                // RF-02: Lista con LazyColumn
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.citas) { cita ->
                         CitaItem(cita = cita)
@@ -51,7 +62,6 @@ fun CitasScreen(viewModel: CitasViewModel) {
     }
 }
 
-// Composable reutilizable (Criterio de evaluación)
 @Composable
 fun CitaItem(cita: Cita) {
     Card(modifier = Modifier.fillMaxWidth()) {
