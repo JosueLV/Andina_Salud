@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,11 +15,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import org.koin.compose.koinInject
+
+// Asegúrate de que estos imports coincidan con tus paquetes reales
 import pe.edu.upeu.andinasalud.presentation.citas.CitasScreen
 import pe.edu.upeu.andinasalud.presentation.citas.CitasViewModel
+import pe.edu.upeu.andinasalud.presentation.perfil.PerfilScreen
+import pe.edu.upeu.andinasalud.presentation.solicitud.SolicitudScreen
+import pe.edu.upeu.andinasalud.presentation.detalle.DetalleCitaScreen
+import pe.edu.upeu.andinasalud.data.local.CitasSimuladas
 
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    isDarkTheme: Boolean = false,
+    onThemeChange: (Boolean) -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -38,7 +46,6 @@ fun AppNavHost() {
                         selected = currentRoute == Destinos.Inicio.ruta,
                         onClick = {
                             navController.navigate(Destinos.Inicio.ruta) {
-                                // Cambiamos .id por .route!! para que sea de tipo String
                                 popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
@@ -46,7 +53,6 @@ fun AppNavHost() {
                         }
                     )
                     NavigationBarItem(
-                        // Usamos AutoMirrored para quitar la línea tachada
                         icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Citas") },
                         label = { Text("Citas") },
                         selected = currentRoute == Destinos.Citas.ruta,
@@ -76,19 +82,34 @@ fun AppNavHost() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Destinos.Citas.ruta, // Iniciamos en Citas temporalmente para probar
+            startDestination = Destinos.Citas.ruta,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Destinos.Inicio.ruta) {
                 Text("Pantalla de Inicio (En construcción)")
             }
             composable(Destinos.Citas.ruta) {
-                // Inyectamos el ViewModel usando Koin
                 val viewModel: CitasViewModel = koinInject()
                 CitasScreen(viewModel = viewModel)
             }
-            composable(Destinos.Perfil.ruta) {
-                Text("Pantalla de Perfil (En construcción)")
+            composable(Destinos.Perfil.ruta) { // Usamos Destinos.Perfil.ruta en lugar de "perfil" estático
+                PerfilScreen(
+                    isDarkTheme = isDarkTheme,
+                    onThemeChange = onThemeChange
+                )
+            }
+            composable("solicitud") {
+                SolicitudScreen(
+                    onGuardar = { navController.popBackStack() }
+                )
+            }
+            composable("detalle/{citaId}") {
+                // Usamos la primera cita simulada temporalmente para poder ver el diseño
+                val citaEjemplo = CitasSimuladas.citas.first()
+                DetalleCitaScreen(
+                    cita = citaEjemplo,
+                    onCancelar = { navController.popBackStack() }
+                )
             }
         }
     }
