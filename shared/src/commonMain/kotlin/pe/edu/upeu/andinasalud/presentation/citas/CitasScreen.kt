@@ -14,18 +14,24 @@ import pe.edu.upeu.andinasalud.domain.model.Cita
 
 @Composable
 fun CitasScreen(viewModel: CitasViewModel) {
-    // Elevación de estado (State Hoisting) exigida en el examen
     val uiState by viewModel.uiState.collectAsState()
+    val filtroActivo by viewModel.filtroHoyActivo.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Manejo de los 4 estados obligatorios del RF-08
+        // SC-A: Chip de filtro "Hoy"
+        FilterChip(
+            selected = filtroActivo,
+            onClick = { viewModel.toggleFiltroHoy() },
+            label = { Text("Hoy") },
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
         when (val state = uiState) {
             is CitasUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator() // Muestra la carga de los 800ms
+                    CircularProgressIndicator()
                 }
             }
             is CitasUiState.Error -> {
@@ -35,11 +41,10 @@ fun CitasScreen(viewModel: CitasViewModel) {
             }
             is CitasUiState.Empty -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "No hay citas registradas.")
+                    Text(text = "No hay citas registradas para hoy.")
                 }
             }
             is CitasUiState.Success -> {
-                // RF-02: Lista con LazyColumn
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.citas) { cita ->
                         CitaItem(cita = cita)
@@ -51,7 +56,6 @@ fun CitasScreen(viewModel: CitasViewModel) {
     }
 }
 
-// Composable reutilizable (Criterio de evaluación)
 @Composable
 fun CitaItem(cita: Cita) {
     Card(modifier = Modifier.fillMaxWidth()) {
