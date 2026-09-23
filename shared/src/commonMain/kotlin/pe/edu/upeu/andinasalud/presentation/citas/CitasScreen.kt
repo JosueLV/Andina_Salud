@@ -16,11 +16,7 @@ import pe.edu.upeu.andinasalud.domain.model.Cita
 fun CitasScreen(viewModel: CitasViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // SC-B: Calculamos si se alcanzó el límite de 3 citas
-    val cantidadCitas = if (uiState is CitasUiState.Success) {
-        (uiState as CitasUiState.Success).citas.size
-    } else 0
-    val limiteAlcanzado = cantidadCitas >= 3
+    val limiteAlcanzado = viewModel.alcanzoLimiteCitas(uiState)
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
