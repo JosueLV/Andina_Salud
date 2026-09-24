@@ -22,27 +22,24 @@ class CitasViewModel(
     private val _mostrarSoloHoy = MutableStateFlow(false)
     val mostrarSoloHoy: StateFlow<Boolean> = _mostrarSoloHoy.asStateFlow()
 
-    // RF-02: Nuevo estado para controlar la pestaña seleccionada
     private val _estadoFiltro = MutableStateFlow("Todas")
     val estadoFiltro: StateFlow<String> = _estadoFiltro.asStateFlow()
+
+    // RF-05: Estado para el texto de búsqueda
+    private val _textoBusqueda = MutableStateFlow("")
+    val textoBusqueda: StateFlow<String> = _textoBusqueda.asStateFlow()
 
     private var todasLasCitas: List<Cita> = emptyList()
 
     val limiteAlcanzado: StateFlow<Boolean> = _uiState.map { estado ->
-        if (estado is CitasUiState.Success) {
-            estado.citas.size >= 3
-        } else {
-            false
-        }
+        if (estado is CitasUiState.Success) estado.citas.size >= 3 else false
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val cantidadProgramadas: StateFlow<Int> = _uiState.map { estado ->
         if (estado is CitasUiState.Success) estado.citas.size else 0
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    init {
-        cargarCitas()
-    }
+    init { cargarCitas() }
 
     private fun cargarCitas() {
         viewModelScope.launch {
@@ -63,32 +60,55 @@ class CitasViewModel(
         aplicarFiltro()
     }
 
-    // RF-02: Función para cambiar la pestaña de estado
     fun setEstadoFiltro(nuevoEstado: String) {
         _estadoFiltro.value = nuevoEstado
         aplicarFiltro()
     }
 
+    // RF-05: Actualiza el texto y aplica el filtro
+    fun setTextoBusqueda(nuevoTexto: String) {
+        _textoBusqueda.value = nuevoTexto
+        aplicarFiltro()
+    }
+
+    // Función auxiliar para quitar tildes según RF-05
+    private fun String.quitarTildes(): String {
+        return this.lowercase()
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+    }
+
     private fun aplicarFiltro() {
         val activadoHoy = _mostrarSoloHoy.value
         val estadoActual = _estadoFiltro.value
+        val busqueda = _textoBusqueda.value.quitarTildes()
 
         var listaTemporal = todasLasCitas
 
-        // 1er Filtro (RF-02): Por Estado (Programada, Atendida, Cancelada)
+        // 1. Filtro por Búsqueda (RF-05)
+        if (busqueda.isNotBlank()) {
+            listaTemporal = listaTemporal.filter {
+                it.especialidad.quitarTildes().contains(busqueda) ||
+                        it.medico.quitarTildes().contains(busqueda)
+            }
+        }
+
+        // 2. Filtro por Estado (RF-02)
         if (estadoActual != "Todas") {
             listaTemporal = listaTemporal.filter {
                 it.estado.toString().equals(estadoActual, ignoreCase = true)
             }
         }
 
-        // 2do Filtro (SC-A): Por Hoy
+        // 3. Filtro por Hoy (SC-A)
         if (activadoHoy) {
             listaTemporal = listaTemporal.filter { it.fecha.contains("23") || it.fecha.contains("Hoy") }
         }
 
-        // RF-02: Ordenamiento (De la más próxima a la más lejana)
-        // Se asume que el formato de fecha (YYYY-MM-DD) y hora (HH:MM) permite orden alfabético
+        // 4. Ordenamiento (RF-02)
         listaTemporal = listaTemporal.sortedWith(compareBy({ it.fecha }, { it.hora }))
 
         if (listaTemporal.isEmpty()) {
