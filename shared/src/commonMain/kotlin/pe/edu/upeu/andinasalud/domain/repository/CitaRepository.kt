@@ -3,6 +3,7 @@ package pe.edu.upeu.andinasalud.domain.repository
 import kotlinx.coroutines.flow.Flow
 import pe.edu.upeu.andinasalud.domain.model.Cita
 import pe.edu.upeu.andinasalud.domain.model.Medico
+import pe.edu.upeu.andinasalud.domain.model.Paciente
 
 /**
  * Contrato de datos. Hoy lo implementa CitaRepositoryFake (memoria);
@@ -15,6 +16,7 @@ interface CitaRepository {
     suspend fun obtenerCitasActuales(): List<Cita>
     suspend fun obtenerCita(id: Int): Cita?
     suspend fun obtenerMedicos(): List<Medico>
+    suspend fun obtenerPaciente(): Paciente
     suspend fun agregar(cita: Cita): Cita
     suspend fun actualizar(cita: Cita)
 }

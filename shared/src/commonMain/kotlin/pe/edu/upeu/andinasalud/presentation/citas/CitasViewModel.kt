@@ -2,120 +2,90 @@ package pe.edu.upeu.andinasalud.presentation.citas
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pe.edu.upeu.andinasalud.domain.model.Cita
+import pe.edu.upeu.andinasalud.domain.model.CriteriosCitas
+import pe.edu.upeu.andinasalud.domain.model.FiltroEstado
+import pe.edu.upeu.andinasalud.domain.rules.ReglasCita
+import pe.edu.upeu.andinasalud.domain.usecase.FiltrarCitasUseCase
 import pe.edu.upeu.andinasalud.domain.usecase.ObtenerCitasUseCase
+import kotlin.coroutines.cancellation.CancellationException
 
 class CitasViewModel(
-    private val obtenerCitasUseCase: ObtenerCitasUseCase
+    private val obtenerCitasUseCase: ObtenerCitasUseCase,
+    private val filtrarCitasUseCase: FiltrarCitasUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CitasUiState>(CitasUiState.Loading)
     val uiState: StateFlow<CitasUiState> = _uiState.asStateFlow()
 
-    private val _mostrarSoloHoy = MutableStateFlow(false)
-    val mostrarSoloHoy: StateFlow<Boolean> = _mostrarSoloHoy.asStateFlow()
+    private val _criterios = MutableStateFlow(CriteriosCitas())
+    val criterios: StateFlow<CriteriosCitas> = _criterios.asStateFlow()
 
-    private val _estadoFiltro = MutableStateFlow("Todas")
-    val estadoFiltro: StateFlow<String> = _estadoFiltro.asStateFlow()
+    // SC-B: ambos valores salen de la regla RN-02 del dominio sobre TODAS las citas (no sobre las filtradas)
+    private val _cantidadProgramadas = MutableStateFlow(0)
+    val cantidadProgramadas: StateFlow<Int> = _cantidadProgramadas.asStateFlow()
 
-    // RF-05: Estado para el texto de búsqueda
-    private val _textoBusqueda = MutableStateFlow("")
-    val textoBusqueda: StateFlow<String> = _textoBusqueda.asStateFlow()
+    private val _limiteAlcanzado = MutableStateFlow(false)
+    val limiteAlcanzado: StateFlow<Boolean> = _limiteAlcanzado.asStateFlow()
 
     private var todasLasCitas: List<Cita> = emptyList()
+    private var cargado = false
+    private var cargaJob: Job? = null
 
-    val limiteAlcanzado: StateFlow<Boolean> = _uiState.map { estado ->
-        if (estado is CitasUiState.Success) estado.citas.size >= 3 else false
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    init {
+        cargarCitas()
+    }
 
-    val cantidadProgramadas: StateFlow<Int> = _uiState.map { estado ->
-        if (estado is CitasUiState.Success) estado.citas.size else 0
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    init { cargarCitas() }
-
-    private fun cargarCitas() {
-        viewModelScope.launch {
+    /** La corrutina vive en viewModelScope: si la pantalla se destruye, se cancela sola. */
+    fun cargarCitas() {
+        cargaJob?.cancel()
+        cargado = false
+        cargaJob = viewModelScope.launch {
             _uiState.value = CitasUiState.Loading
             try {
                 obtenerCitasUseCase().collect { lista ->
                     todasLasCitas = lista
-                    aplicarFiltro()
+                    _cantidadProgramadas.value = ReglasCita.cantidadProgramadas(lista)
+                    _limiteAlcanzado.value = ReglasCita.limiteAlcanzado(lista)
+                    cargado = true
+                    aplicarFiltros()
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = CitasUiState.Error(e.message ?: "Error desconocido")
             }
         }
     }
 
+    fun setEstadoFiltro(estado: FiltroEstado) {
+        _criterios.update { it.copy(estado = estado) }
+        aplicarFiltros()
+    }
+
     fun toggleFiltroHoy() {
-        _mostrarSoloHoy.value = !_mostrarSoloHoy.value
-        aplicarFiltro()
+        _criterios.update { it.copy(soloHoy = !it.soloHoy) }
+        aplicarFiltros()
     }
 
-    fun setEstadoFiltro(nuevoEstado: String) {
-        _estadoFiltro.value = nuevoEstado
-        aplicarFiltro()
+    fun setTextoBusqueda(texto: String) {
+        _criterios.update { it.copy(busqueda = texto) }
+        aplicarFiltros()
     }
 
-    // RF-05: Actualiza el texto y aplica el filtro
-    fun setTextoBusqueda(nuevoTexto: String) {
-        _textoBusqueda.value = nuevoTexto
-        aplicarFiltro()
-    }
-
-    // Función auxiliar para quitar tildes según RF-05
-    private fun String.quitarTildes(): String {
-        return this.lowercase()
-            .replace("á", "a")
-            .replace("é", "e")
-            .replace("í", "i")
-            .replace("ó", "o")
-            .replace("ú", "u")
-    }
-
-    private fun aplicarFiltro() {
-        val activadoHoy = _mostrarSoloHoy.value
-        val estadoActual = _estadoFiltro.value
-        val busqueda = _textoBusqueda.value.quitarTildes()
-
-        var listaTemporal = todasLasCitas
-
-        // 1. Filtro por Búsqueda (RF-05)
-        if (busqueda.isNotBlank()) {
-            listaTemporal = listaTemporal.filter {
-                it.especialidad.quitarTildes().contains(busqueda) ||
-                        it.medico.quitarTildes().contains(busqueda)
-            }
-        }
-
-        // 2. Filtro por Estado (RF-02)
-        if (estadoActual != "Todas") {
-            listaTemporal = listaTemporal.filter {
-                // Usamos startsWith porque el toString() ahora es "Programada(recordatorioActivo=true)"
-                it.estado.toString().startsWith(estadoActual, ignoreCase = true)
-            }
-        }
-
-        // 3. Filtro por Hoy (SC-A)
-        if (activadoHoy) {
-            listaTemporal = listaTemporal.filter { it.fecha.contains("23") || it.fecha.contains("Hoy") }
-        }
-
-        // 4. Ordenamiento (RF-02)
-        listaTemporal = listaTemporal.sortedWith(compareBy({ it.fecha }, { it.hora }))
-
-        if (listaTemporal.isEmpty()) {
-            _uiState.value = CitasUiState.Empty
+    private fun aplicarFiltros() {
+        if (!cargado) return
+        val filtradas = filtrarCitasUseCase(todasLasCitas, _criterios.value)
+        _uiState.value = if (filtradas.isEmpty()) {
+            CitasUiState.Empty
         } else {
-            _uiState.value = CitasUiState.Success(listaTemporal)
+            CitasUiState.Success(filtradas.map { CitaItemUi(it, filtrarCitasUseCase.esHoy(it)) })
         }
     }
 }

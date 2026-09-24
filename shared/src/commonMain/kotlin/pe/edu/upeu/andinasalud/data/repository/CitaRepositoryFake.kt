@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.update
 import pe.edu.upeu.andinasalud.data.local.CitasSimuladas
 import pe.edu.upeu.andinasalud.domain.model.Cita
 import pe.edu.upeu.andinasalud.domain.model.Medico
+import pe.edu.upeu.andinasalud.domain.model.Paciente
 import pe.edu.upeu.andinasalud.domain.repository.CitaRepository
 
 class CitaRepositoryFake : CitaRepository {
@@ -27,6 +28,8 @@ class CitaRepositoryFake : CitaRepository {
     override suspend fun obtenerCita(id: Int): Cita? = citas.value.firstOrNull { it.id == id }
 
     override suspend fun obtenerMedicos(): List<Medico> = CitasSimuladas.medicos
+
+    override suspend fun obtenerPaciente(): Paciente = CitasSimuladas.paciente
 
     override suspend fun agregar(cita: Cita): Cita {
         val nuevoId = (citas.value.maxOfOrNull { it.id } ?: 0) + 1
