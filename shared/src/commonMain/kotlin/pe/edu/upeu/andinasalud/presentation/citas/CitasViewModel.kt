@@ -99,7 +99,8 @@ class CitasViewModel(
         // 2. Filtro por Estado (RF-02)
         if (estadoActual != "Todas") {
             listaTemporal = listaTemporal.filter {
-                it.estado.toString().equals(estadoActual, ignoreCase = true)
+                // Usamos startsWith porque el toString() ahora es "Programada(recordatorioActivo=true)"
+                it.estado.toString().startsWith(estadoActual, ignoreCase = true)
             }
         }
 
