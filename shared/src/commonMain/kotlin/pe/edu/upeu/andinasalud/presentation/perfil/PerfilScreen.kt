@@ -9,36 +9,48 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun PerfilScreen(
-    nombrePaciente: String = "Lucia Quispe Mamani",
-    documento: String = "70154823",
-    correo: String = "lucia.quispe@correo.pe",
-    isDarkTheme: Boolean = false,
-    onThemeChange: (Boolean) -> Unit = {}
+    viewModel: PerfilViewModel,
+    isDarkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Perfil del Paciente", style = MaterialTheme.typography.headlineMedium)
+        Text("Perfil del paciente", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Nombre: $nombrePaciente", style = MaterialTheme.typography.bodyLarge)
-                Text("Documento: $documento", style = MaterialTheme.typography.bodyLarge)
-                Text("Correo: $correo", style = MaterialTheme.typography.bodyLarge)
+        when (val estado = uiState) {
+            is PerfilUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is PerfilUiState.Error -> {
+                Text(estado.message, color = MaterialTheme.colorScheme.error)
+                Button(onClick = viewModel::cargar) { Text("Reintentar") }
+            }
+            is PerfilUiState.Success -> {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Nombre: ${estado.paciente.nombre}", style = MaterialTheme.typography.bodyLarge)
+                        Text("Documento: ${estado.paciente.documento}", style = MaterialTheme.typography.bodyLarge)
+                        Text("Correo: ${estado.paciente.correo}", style = MaterialTheme.typography.bodyLarge)
+                        Text("Teléfono: ${estado.paciente.telefono}", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // RF-06: el tema se aplica en App.kt, en la raiz del arbol, y por eso cambia toda la aplicacion
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Modo Oscuro", style = MaterialTheme.typography.bodyLarge)
-            Switch(
-                checked = isDarkTheme,
-                onCheckedChange = onThemeChange
-            )
+            Text("Modo oscuro", style = MaterialTheme.typography.bodyLarge)
+            Switch(checked = isDarkTheme, onCheckedChange = onThemeChange)
         }
     }
 }
