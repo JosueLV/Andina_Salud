@@ -4,10 +4,11 @@ data class Cita(
     val id: Int = 0,
     val especialidad: String,
     val medico: String,
-    val fecha: String,
-    val hora: String,
+    val fecha: String, // AAAA-MM-DD
+    val hora: String,  // HH:MM
     val sede: String,
-    val modalidad: String,
-    // Restauramos el estado con un valor por defecto para que el caso de uso compile
-    val estado: EstadoCita = EstadoCita.Programada(recordatorioActivo = true)
+    val modalidad: String = "Presencial",
+    val estado: EstadoCita = EstadoCita.Programada(recordatorioActivo = true),
+    // SC-D: registro de cambios (reprogramaciones) que se muestra en el detalle
+    val historial: List<String> = emptyList()
 )
