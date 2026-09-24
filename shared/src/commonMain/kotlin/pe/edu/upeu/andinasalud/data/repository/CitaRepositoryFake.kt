@@ -9,7 +9,7 @@ import pe.edu.upeu.andinasalud.domain.repository.CitaRepository
 
 class CitaRepositoryFake : CitaRepository {
     override fun obtenerCitas(): Flow<List<Cita>> = flow {
-        delay(800) // Retardo simulado pedido en el examen
+        delay(1500) // Retardo simulado pedido en el examen
         emit(CitasSimuladas.citas)
     }
 }
