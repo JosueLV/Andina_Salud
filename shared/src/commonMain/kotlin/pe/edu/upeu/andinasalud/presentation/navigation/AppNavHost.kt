@@ -137,14 +137,18 @@ fun AppNavHost(
                 val viewModel: SolicitudViewModel = koinInject()
                 SolicitudScreen(
                     viewModel = viewModel,
-                    onRegistrada = { navController.popBackStack() }
+                    onRegistrada = { navController.popBackStack() },
+                    onVolver = { navController.popBackStack() }
                 )
             }
             composable(Destinos.Detalle.ruta) {
                 val viewModel: DetalleCitaViewModel = koinInject(
                     parameters = { parametersOf(citaSeleccionadaId) }
                 )
-                DetalleCitaScreen(viewModel = viewModel)
+                DetalleCitaScreen(
+                    viewModel = viewModel,
+                    onVolver = { navController.popBackStack() }
+                )
             }
         }
     }
