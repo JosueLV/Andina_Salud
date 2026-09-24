@@ -16,6 +16,7 @@ import pe.edu.upeu.andinasalud.domain.usecase.SolicitarCitaUseCase
 import pe.edu.upeu.andinasalud.presentation.citas.CitasViewModel
 import pe.edu.upeu.andinasalud.presentation.detalle.DetalleCitaViewModel
 import pe.edu.upeu.andinasalud.presentation.inicio.InicioViewModel
+import pe.edu.upeu.andinasalud.presentation.perfil.PerfilViewModel
 import pe.edu.upeu.andinasalud.presentation.solicitud.SolicitudViewModel
 
 val appModule = module {
@@ -38,4 +39,5 @@ val appModule = module {
     factory { InicioViewModel(get(), get(), get(), get()) }
     factory { (citaId: Int) -> DetalleCitaViewModel(citaId, get(), get(), get()) }
     factory { SolicitudViewModel(get(), get()) }
+    factory { PerfilViewModel(get()) }
 }
