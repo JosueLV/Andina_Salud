@@ -24,6 +24,7 @@ import pe.edu.upeu.andinasalud.presentation.perfil.PerfilScreen
 import pe.edu.upeu.andinasalud.presentation.solicitud.SolicitudScreen
 import pe.edu.upeu.andinasalud.presentation.detalle.DetalleCitaScreen
 import pe.edu.upeu.andinasalud.data.local.CitasSimuladas
+import pe.edu.upeu.andinasalud.presentation.inicio.InicioScreen
 
 @Composable
 fun AppNavHost(
@@ -86,7 +87,20 @@ fun AppNavHost(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Destinos.Inicio.ruta) {
-                Text("Pantalla de Inicio (En construcción)")
+                InicioScreen(
+                    onNavigateToCitas = {
+                        // Navega a la pestaña de Citas
+                        navController.navigate(Destinos.Citas.ruta) {
+                            popUpTo(navController.graph.findStartDestination().route!!) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToSolicitar = {
+                        // Navega a la pantalla de solicitud de nueva cita
+                        navController.navigate("solicitud")
+                    }
+                )
             }
             composable(Destinos.Citas.ruta) {
                 val viewModel: CitasViewModel = koinInject()

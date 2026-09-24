@@ -19,14 +19,15 @@ class CitasViewModel(
     private val _uiState = MutableStateFlow<CitasUiState>(CitasUiState.Loading)
     val uiState: StateFlow<CitasUiState> = _uiState.asStateFlow()
 
-    // 1. Cambiado a mostrarSoloHoy para que coincida exactamente con la UI
     private val _mostrarSoloHoy = MutableStateFlow(false)
     val mostrarSoloHoy: StateFlow<Boolean> = _mostrarSoloHoy.asStateFlow()
 
+    // RF-02: Nuevo estado para controlar la pestaña seleccionada
+    private val _estadoFiltro = MutableStateFlow("Todas")
+    val estadoFiltro: StateFlow<String> = _estadoFiltro.asStateFlow()
+
     private var todasLasCitas: List<Cita> = emptyList()
 
-    // 2. RN-02: Convertimos tu validación en un StateFlow reactivo.
-    // La UI lo leerá automáticamente sin tener que llamar a una función.
     val limiteAlcanzado: StateFlow<Boolean> = _uiState.map { estado ->
         if (estado is CitasUiState.Success) {
             estado.citas.size >= 3
@@ -35,7 +36,6 @@ class CitasViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // 3. Variable extra para pintar el número en el ícono inferior (AppNavHost)
     val cantidadProgramadas: StateFlow<Int> = _uiState.map { estado ->
         if (estado is CitasUiState.Success) estado.citas.size else 0
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -63,20 +63,38 @@ class CitasViewModel(
         aplicarFiltro()
     }
 
-    private fun aplicarFiltro() {
-        val activado = _mostrarSoloHoy.value
+    // RF-02: Función para cambiar la pestaña de estado
+    fun setEstadoFiltro(nuevoEstado: String) {
+        _estadoFiltro.value = nuevoEstado
+        aplicarFiltro()
+    }
 
-        val listaFiltrada = if (activado) {
-            // Nota: Actualicé "22" a "23" para que coincida con la fecha de hoy
-            todasLasCitas.filter { it.fecha.contains("23") || it.fecha.contains("Hoy") }
-        } else {
-            todasLasCitas
+    private fun aplicarFiltro() {
+        val activadoHoy = _mostrarSoloHoy.value
+        val estadoActual = _estadoFiltro.value
+
+        var listaTemporal = todasLasCitas
+
+        // 1er Filtro (RF-02): Por Estado (Programada, Atendida, Cancelada)
+        if (estadoActual != "Todas") {
+            listaTemporal = listaTemporal.filter {
+                it.estado.toString().equals(estadoActual, ignoreCase = true)
+            }
         }
 
-        if (listaFiltrada.isEmpty()) {
+        // 2do Filtro (SC-A): Por Hoy
+        if (activadoHoy) {
+            listaTemporal = listaTemporal.filter { it.fecha.contains("23") || it.fecha.contains("Hoy") }
+        }
+
+        // RF-02: Ordenamiento (De la más próxima a la más lejana)
+        // Se asume que el formato de fecha (YYYY-MM-DD) y hora (HH:MM) permite orden alfabético
+        listaTemporal = listaTemporal.sortedWith(compareBy({ it.fecha }, { it.hora }))
+
+        if (listaTemporal.isEmpty()) {
             _uiState.value = CitasUiState.Empty
         } else {
-            _uiState.value = CitasUiState.Success(listaFiltrada)
+            _uiState.value = CitasUiState.Success(listaTemporal)
         }
     }
 }

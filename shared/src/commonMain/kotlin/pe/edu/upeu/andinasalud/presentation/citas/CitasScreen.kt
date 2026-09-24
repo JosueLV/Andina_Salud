@@ -16,10 +16,14 @@ import pe.edu.upeu.andinasalud.domain.model.Cita
 
 @Composable
 fun CitasScreen(viewModel: CitasViewModel) {
-    // Observamos los estados que vienen del ViewModel (Reglas SC-A y SC-B en la capa correcta)
+    // Observamos los estados que vienen del ViewModel (Reglas SC-A y SC-B)
     val uiState by viewModel.uiState.collectAsState()
     val mostrarSoloHoy by viewModel.mostrarSoloHoy.collectAsState()
     val limiteAlcanzado by viewModel.limiteAlcanzado.collectAsState()
+
+    // RF-02: Observamos el estado de la pestaña actual
+    val estadoFiltro by viewModel.estadoFiltro.collectAsState()
+    val estados = listOf("Todas", "Programada", "Atendida", "Cancelada")
 
     Scaffold(
         floatingActionButton = {
@@ -38,29 +42,48 @@ fun CitasScreen(viewModel: CitasViewModel) {
             }
         }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues).padding(16.dp).fillMaxSize()) {
+        Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
 
-            Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
+            // Envolvemos el título y el chip en su propio padding para que las pestañas puedan ocupar todo el ancho
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // SC-A: El chip interactúa directamente con el ViewModel
+                FilterChip(
+                    selected = mostrarSoloHoy,
+                    onClick = { viewModel.toggleFiltroHoy() },
+                    label = { Text("Filtrar por Hoy") }
+                )
+            }
+
+            // RF-02: Pestañas de estado (NUEVO)
+            ScrollableTabRow(
+                selectedTabIndex = estados.indexOf(estadoFiltro),
+                edgePadding = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                estados.forEach { estado ->
+                    Tab(
+                        selected = estadoFiltro == estado,
+                        onClick = { viewModel.setEstadoFiltro(estado) },
+                        text = { Text(estado) }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            // SC-A: El chip interactúa directamente con el ViewModel
-            FilterChip(
-                selected = mostrarSoloHoy,
-                onClick = { viewModel.toggleFiltroHoy() },
-                label = { Text("Filtrar por Hoy") }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // RF-08: Manejo exhaustivo de estados (Cargando, Error, Vacío, Éxito) INTACTO
             when (uiState) {
                 is CitasUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                is CitasUiState.Error -> Text("Error al cargar citas", color = Color.Red)
-                is CitasUiState.Empty -> Text("No hay citas programadas") // Manejo exhaustivo
+                is CitasUiState.Error -> Text("Error al cargar citas", color = Color.Red, modifier = Modifier.padding(16.dp))
+                is CitasUiState.Empty -> Text("No hay citas programadas", modifier = Modifier.padding(16.dp))
                 is CitasUiState.Success -> {
-                    // La lista ya viene filtrada desde la capa del ViewModel
+                    // La lista ya viene filtrada y ordenada desde la capa del ViewModel
                     val citas = (uiState as CitasUiState.Success).citas
 
-                    LazyColumn {
+                    LazyColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
                         items(citas) { cita ->
                             CitaCard(cita = cita)
                         }
@@ -85,7 +108,7 @@ fun CitaCard(cita: Cita) {
             ) {
                 Text(cita.especialidad, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
 
-                // Etiqueta visual de "Hoy" en la tarjeta
+                // SC-A: Etiqueta visual de "Hoy" en la tarjeta
                 if (cita.fecha == "2026-09-23") {
                     Badge(containerColor = MaterialTheme.colorScheme.error) {
                         Text("Hoy", color = Color.White, modifier = Modifier.padding(horizontal = 4.dp))
