@@ -3,53 +3,67 @@ package pe.edu.upeu.andinasalud.presentation.citas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.andinasalud.domain.model.Cita
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.VideoCall
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 @Composable
 fun CitasScreen(viewModel: CitasViewModel) {
-    // Elevación de estado (State Hoisting) exigida en el examen
+    // Observamos los estados que vienen del ViewModel (Reglas SC-A y SC-B en la capa correcta)
     val uiState by viewModel.uiState.collectAsState()
+    val mostrarSoloHoy by viewModel.mostrarSoloHoy.collectAsState()
+    val limiteAlcanzado by viewModel.limiteAlcanzado.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    // Si NO se ha alcanzado el límite, permitimos la acción
+                    if (!limiteAlcanzado) {
+                        // Lógica de navegación para nueva cita
+                    }
+                },
+                // SC-B: Deshabilitado visual (Gris si llegó al límite, color primario si no)
+                containerColor = if (limiteAlcanzado) Color.Gray else MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Nueva Cita")
+            }
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues).padding(16.dp).fillMaxSize()) {
 
-        // Manejo de los 4 estados obligatorios del RF-08
-        when (val state = uiState) {
-            is CitasUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator() // Muestra la carga de los 800ms
-                }
-            }
-            is CitasUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = state.message, color = MaterialTheme.colorScheme.error)
-                }
-            }
-            is CitasUiState.Empty -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "No hay citas registradas.")
-                }
-            }
-            is CitasUiState.Success -> {
-                // RF-02: Lista con LazyColumn
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(state.citas) { cita ->
-                        CitaItem(cita = cita)
-                        Spacer(modifier = Modifier.height(8.dp))
+            Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // SC-A: El chip interactúa directamente con el ViewModel
+            FilterChip(
+                selected = mostrarSoloHoy,
+                onClick = { viewModel.toggleFiltroHoy() },
+                label = { Text("Filtrar por Hoy") }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when (uiState) {
+                is CitasUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                is CitasUiState.Error -> Text("Error al cargar citas", color = Color.Red)
+                is CitasUiState.Empty -> Text("No hay citas programadas") // Manejo exhaustivo
+                is CitasUiState.Success -> {
+                    // La lista ya viene filtrada desde la capa del ViewModel
+                    val citas = (uiState as CitasUiState.Success).citas
+
+                    LazyColumn {
+                        items(citas) { cita ->
+                            CitaCard(cita = cita)
+                        }
                     }
                 }
             }
@@ -57,33 +71,40 @@ fun CitasScreen(viewModel: CitasViewModel) {
     }
 }
 
-// Composable reutilizable (Criterio de evaluación)
 @Composable
-fun CitaItem(cita: Cita) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun CitaCard(cita: Cita) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = cita.especialidad, style = MaterialTheme.typography.titleMedium)
-            Text(text = "Dr/Dra: ${cita.medico}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "${cita.fecha} - ${cita.hora}", style = MaterialTheme.typography.bodySmall)
-            Text(text = "Sede: ${cita.sede}", style = MaterialTheme.typography.bodySmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(cita.especialidad, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+
+                // Etiqueta visual de "Hoy" en la tarjeta
+                if (cita.fecha == "2026-09-23") {
+                    Badge(containerColor = MaterialTheme.colorScheme.error) {
+                        Text("Hoy", color = Color.White, modifier = Modifier.padding(horizontal = 4.dp))
+                    }
+                }
+            }
+
+            Text(cita.medico)
+            Text("${cita.fecha} - ${cita.hora}")
+            Text("Sede: ${cita.sede}")
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // SC-C: Fila con ícono dinámico según la modalidad
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (cita.modalidad == "Teleconsulta") Icons.Default.VideoCall else Icons.Default.LocationOn,
-                    contentDescription = "Icono Modalidad",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = cita.modalidad,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            // SC-C: Modalidad de atención con iconos y color
+            Text(
+                text = if (cita.modalidad == "Teleconsulta") "💻 Teleconsulta" else "📍 Presencial",
+                color = Color(0xFF008000),
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
