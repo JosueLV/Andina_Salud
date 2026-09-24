@@ -1,5 +1,6 @@
 package pe.edu.upeu.andinasalud.presentation.citas
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,32 +15,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.andinasalud.domain.model.Cita
+import pe.edu.upeu.andinasalud.domain.model.CriteriosCitas
+import pe.edu.upeu.andinasalud.domain.model.EstadoCita
+import pe.edu.upeu.andinasalud.domain.model.FiltroEstado
 
+/** Conecta el ViewModel con la interfaz. No contiene logica de negocio. */
 @Composable
-fun CitasScreen(viewModel: CitasViewModel) {
-    // Observamos todos los estados del ViewModel
+fun CitasScreen(
+    viewModel: CitasViewModel,
+    onCitaClick: (Cita) -> Unit = {},
+    onNuevaCita: () -> Unit = {}
+) {
     val uiState by viewModel.uiState.collectAsState()
-    val mostrarSoloHoy by viewModel.mostrarSoloHoy.collectAsState()
+    val criterios by viewModel.criterios.collectAsState()
     val limiteAlcanzado by viewModel.limiteAlcanzado.collectAsState()
-    val estadoFiltro by viewModel.estadoFiltro.collectAsState()
-    val textoBusqueda by viewModel.textoBusqueda.collectAsState()
 
-    val estados = listOf("Todas", "Programada", "Atendida", "Cancelada")
+    CitasContent(
+        uiState = uiState,
+        criterios = criterios,
+        limiteAlcanzado = limiteAlcanzado,
+        onBusquedaChange = viewModel::setTextoBusqueda,
+        onEstadoChange = viewModel::setEstadoFiltro,
+        onToggleHoy = viewModel::toggleFiltroHoy,
+        onReintentar = viewModel::cargarCitas,
+        onCitaClick = onCitaClick,
+        onNuevaCita = onNuevaCita
+    )
+}
+
+/** Version sin estado propio (state hoisting): recibe datos y devuelve eventos. */
+@Composable
+fun CitasContent(
+    uiState: CitasUiState,
+    criterios: CriteriosCitas,
+    limiteAlcanzado: Boolean,
+    onBusquedaChange: (String) -> Unit,
+    onEstadoChange: (FiltroEstado) -> Unit,
+    onToggleHoy: () -> Unit,
+    onReintentar: () -> Unit,
+    onCitaClick: (Cita) -> Unit,
+    onNuevaCita: () -> Unit
+) {
+    val estados = FiltroEstado.entries
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    // SC-B: Solo navega si no ha alcanzado el límite de citas
-                    if (!limiteAlcanzado) {
-                        // Lógica de navegación para nueva cita
-                    }
-                },
-                // SC-B: Deshabilitado visual (gris) si llegó al límite
+                // SC-B: el limite viene de la regla RN-02 del dominio
+                onClick = { if (!limiteAlcanzado) onNuevaCita() },
                 containerColor = if (limiteAlcanzado) Color.Gray else MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Nueva Cita")
+                Icon(Icons.Default.Add, contentDescription = "Nueva cita")
             }
         }
     ) { paddingValues ->
@@ -49,10 +76,9 @@ fun CitasScreen(viewModel: CitasViewModel) {
                 Text("Mis Citas", style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // RF-05: Barra de Búsqueda
                 OutlinedTextField(
-                    value = textoBusqueda,
-                    onValueChange = { viewModel.setTextoBusqueda(it) },
+                    value = criterios.busqueda,
+                    onValueChange = onBusquedaChange,
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Buscar especialidad o médico...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
@@ -62,48 +88,67 @@ fun CitasScreen(viewModel: CitasViewModel) {
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // SC-A: Chip para filtrar solo las citas de "Hoy"
+                // SC-A: chip "Hoy", se combina con el filtro de estado
                 FilterChip(
-                    selected = mostrarSoloHoy,
-                    onClick = { viewModel.toggleFiltroHoy() },
-                    label = { Text("Filtrar por Hoy") }
+                    selected = criterios.soloHoy,
+                    onClick = onToggleHoy,
+                    label = { Text("Hoy") }
                 )
             }
 
-            // RF-02: Pestañas de estado (Todas, Programada, Atendida, Cancelada)
             ScrollableTabRow(
-                selectedTabIndex = estados.indexOf(estadoFiltro),
+                selectedTabIndex = estados.indexOf(criterios.estado),
                 edgePadding = 16.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 estados.forEach { estado ->
                     Tab(
-                        selected = estadoFiltro == estado,
-                        onClick = { viewModel.setEstadoFiltro(estado) },
-                        text = { Text(estado) }
+                        selected = criterios.estado == estado,
+                        onClick = { onEstadoChange(estado) },
+                        text = { Text(estado.etiqueta) }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // RF-08: Manejo exhaustivo de todos los estados de la interfaz
+            // RF-08: carga, contenido, lista vacia y error
             when (uiState) {
                 is CitasUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
                 is CitasUiState.Error -> {
-                    Text("Error al cargar citas", color = Color.Red, modifier = Modifier.padding(16.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "No se pudieron cargar las citas",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(uiState.message, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onReintentar) { Text("Reintentar") }
+                    }
                 }
                 is CitasUiState.Empty -> {
-                    Text("No hay citas programadas", modifier = Modifier.padding(16.dp))
+                    Text(
+                        "No hay citas que coincidan con los filtros",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
                 is CitasUiState.Success -> {
-                    val citas = (uiState as CitasUiState.Success).citas
-
                     LazyColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        items(citas) { cita ->
-                            CitaCard(cita = cita)
+                        items(uiState.items, key = { it.cita.id }) { item ->
+                            CitaCard(
+                                cita = item.cita,
+                                esHoy = item.esHoy,
+                                onClick = { onCitaClick(item.cita) }
+                            )
                         }
                     }
                 }
@@ -113,9 +158,9 @@ fun CitasScreen(viewModel: CitasViewModel) {
 }
 
 @Composable
-fun CitaCard(cita: Cita) {
+fun CitaCard(cita: Cita, esHoy: Boolean = false, onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -125,9 +170,7 @@ fun CitaCard(cita: Cita) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(cita.especialidad, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-
-                // SC-A: Etiqueta visual de "Hoy" destacada en rojo
-                if (cita.fecha == "2026-09-23") {
+                if (esHoy) {
                     Badge(containerColor = MaterialTheme.colorScheme.error) {
                         Text("Hoy", color = Color.White, modifier = Modifier.padding(horizontal = 4.dp))
                     }
@@ -137,10 +180,18 @@ fun CitaCard(cita: Cita) {
             Text(cita.medico)
             Text("${cita.fecha} - ${cita.hora}")
             Text("Sede: ${cita.sede}")
+            Text(
+                text = "Estado: " + when (cita.estado) {
+                    is EstadoCita.Programada -> "Programada"
+                    is EstadoCita.Atendida -> "Atendida"
+                    is EstadoCita.Cancelada -> "Cancelada"
+                },
+                style = MaterialTheme.typography.bodySmall
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // SC-C: Modalidad de atención con iconos y colores representativos
+            // SC-C: modalidad con icono
             Text(
                 text = if (cita.modalidad == "Teleconsulta") "💻 Teleconsulta" else "📍 Presencial",
                 color = Color(0xFF008000),
