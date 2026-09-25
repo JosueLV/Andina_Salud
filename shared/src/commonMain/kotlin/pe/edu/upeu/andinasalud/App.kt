@@ -1,48 +1,39 @@
 package pe.edu.upeu.andinasalud
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
+import pe.edu.upeu.andinasalud.presentation.theme.AndinaSaludTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
+import org.koin.compose.KoinApplication
 
-import andinasalud.shared.generated.resources.Res
-import andinasalud.shared.generated.resources.compose_multiplatform
+// Importa tu módulo Koin y la navegación
+import pe.edu.upeu.andinasalud.di.appModule
+import pe.edu.upeu.andinasalud.presentation.navigation.AppNavHost
+
+
 
 @Composable
-@Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
+    // 1. Iniciamos Koin y cargamos tu módulo de dependencias (ViewModel, Repositorios)
+    KoinApplication(application = {
+        modules(appModule)
+    }) {
+        // 2. Estado global del modo oscuro
+        var isDarkTheme by remember { mutableStateOf(false) }
+
+        // 3. Aplicamos el tema pasando el estado
+        AndinaSaludTheme(darkTheme = isDarkTheme) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                // 4. Llamamos a la navegación y le pasamos el estado y la función para cambiarlo
+                AppNavHost(
+                    isDarkTheme = isDarkTheme,
+                    onThemeChange = { nuevoEstado -> isDarkTheme = nuevoEstado }
+                )
             }
         }
     }
