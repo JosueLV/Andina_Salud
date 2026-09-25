@@ -10,9 +10,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.andinasalud.domain.model.Cita
 import pe.edu.upeu.andinasalud.domain.model.EstadoCita
+import pe.edu.upeu.andinasalud.presentation.components.EncabezadoConVolver
 
 @Composable
-fun DetalleCitaScreen(viewModel: DetalleCitaViewModel) {
+fun DetalleCitaScreen(viewModel: DetalleCitaViewModel, onVolver: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -26,12 +27,15 @@ fun DetalleCitaScreen(viewModel: DetalleCitaViewModel) {
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-            DetalleCitaContent(
-                uiState = uiState,
-                onCancelar = { mostrarDialogo = true },
-                onReintentar = viewModel::cargar
-            )
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            EncabezadoConVolver(titulo = "Detalle de cita", onVolver = onVolver)
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                DetalleCitaContent(
+                    uiState = uiState,
+                    onCancelar = { mostrarDialogo = true },
+                    onReintentar = viewModel::cargar
+                )
+            }
         }
     }
 
@@ -94,9 +98,6 @@ private fun DetalleCitaDatos(estado: DetalleCitaUiState.Success, onCancelar: () 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("Detalle de cita", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DatoDetalle("Especialidad", cita.especialidad)
@@ -105,6 +106,9 @@ private fun DetalleCitaDatos(estado: DetalleCitaUiState.Success, onCancelar: () 
                 DatoDetalle("Fecha y hora", "${cita.fecha} - ${cita.hora}")
                 DatoDetalle("Modalidad", if (cita.modalidad == "Teleconsulta") "💻 Teleconsulta" else "📍 Presencial")
                 DatoDetalle("Estado", textoEstado(cita))
+                if (cita.estado is EstadoCita.Cancelada) {
+                    DatoDetalle("Motivo de la cancelación", cita.estado.motivo)
+                }
                 DatoDetalle("Indicaciones", textoIndicaciones(cita))
             }
         }
@@ -154,7 +158,7 @@ private fun textoEstado(cita: Cita): String = when (val e = cita.estado) {
         if (e.recordatorioActivo) "Programada (recordatorio activo)" else "Programada (sin recordatorio)"
     is EstadoCita.Atendida -> "Atendida"
     is EstadoCita.Cancelada ->
-        "Cancelada: ${e.motivo}" + if (e.canceladaPorPaciente) " (por el paciente)" else ""
+        if (e.canceladaPorPaciente) "Cancelada" else "Cancelada por la clínica"
 }
 
 private fun textoIndicaciones(cita: Cita): String = when (val e = cita.estado) {
