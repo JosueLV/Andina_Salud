@@ -11,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import pe.edu.upeu.andinasalud.domain.rules.ReglasCita
+import pe.edu.upeu.andinasalud.presentation.components.EncabezadoConVolver
 
 @Composable
 fun SolicitudScreen(
     viewModel: SolicitudViewModel,
-    onRegistrada: () -> Unit
+    onRegistrada: () -> Unit,
+    onVolver: () -> Unit
 ) {
     val estado by viewModel.uiState.collectAsState()
 
@@ -29,12 +31,12 @@ fun SolicitudScreen(
 
     val errores = estado.errores
 
+    Column(modifier = Modifier.fillMaxSize()) {
+    EncabezadoConVolver(titulo = "Solicitar nueva cita", onVolver = onVolver)
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text("Solicitar nueva cita", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Errores que no pertenecen a un solo campo (RN-02)
         if (errores.general != null) {
@@ -104,6 +106,7 @@ fun SolicitudScreen(
         ) {
             Text(if (estado.enviando) "Registrando..." else "Registrar solicitud")
         }
+    }
     }
 }
 
